@@ -1,0 +1,139 @@
+service: medical-consultation-portal
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1 # Change to your preferred region
+  environment:
+    USERS_TABLE: ${self:service}-users-${sls:stage}
+    APPOINTMENTS_TABLE: ${self:service}-appointments-${sls:stage}
+    JWT_SECRET: your-jwt-secret # Should be moved to SSM or Secrets Manager in production
+    SOURCE_EMAIL: your-verified-email@example.com # Must be verified in SES
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:UpdateItem
+        - dynamodb:Query
+      Resource:
+        - Fn::GetAtt: [UsersTable, Arn]
+        - Fn::GetAtt: [AppointmentsTable, Arn]
+        - Fn::Join: ["/", [Fn::GetAtt: [UsersTable, Arn], "index/*"]]
+        - Fn::Join: ["/", [Fn::GetAtt: [AppointmentsTable, Arn], "index/*"]]
+    - Effect: Allow
+      Action:
+        - ses:SendEmail
+      Resource: "*"
+
+plugins:
+  - serverless-dynamodb
+  - serverless-offline
+
+custom:
+  dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
+      seed: true
+
+functions:
+  api:
+    handler: handler.handler
+    events:
+      - http:
+          path: /auth/register
+          method: post
+          cors: true
+      - http:
+          path: /auth/login
+          method: post
+          cors: true
+      - http:
+          path: /auth/profile
+          method: get
+          cors: true
+      - http:
+          path: /auth/profile
+          method: put
+          cors: true
+      - http:
+          path: /appointments
+          method: post
+          cors: true
+      - http:
+          path: /appointments/doctor
+          method: get
+          cors: true
+      - http:
+          path: /appointments/patient
+          method: get
+          cors: true
+      - http:
+          path: /appointments/{id}
+          method: put
+          cors: true
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.USERS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: EmailIndex
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    AppointmentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.APPOINTMENTS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: appointmentId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: doctorId
+            AttributeType: S
+          - AttributeName: councilId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: appointmentId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserIdIndex
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: DoctorIdIndex
+            KeySchema:
+              - AttributeName: doctorId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: CouncilIdIndex
+            KeySchema:
+              - AttributeName: councilId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST

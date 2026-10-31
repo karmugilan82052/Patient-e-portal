@@ -1,0 +1,10 @@
+{
+  "name": "patient-consultation-portal",
+  "version": "1.0.0",
+  "description": "Patient Consultation Portal Runner",
+  "scripts": {
+    "dev": "node dev.js",
+    "start": "node dev.js",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install"
+  }
+}

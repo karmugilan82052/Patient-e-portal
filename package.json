@@ -1,0 +1,10 @@
+{
+  "name": "patient-consultation-root",
+  "version": "1.0.0",
+  "description": "Patient Consultation Portal - Full Stack Runner",
+  "scripts": {
+    "dev": "node dev.js",
+    "start": "node dev.js",
+    "install:all": "cd \"Patient Consultation/backend\" && npm install && cd \"../frontend\" && npm install"
+  }
+}
